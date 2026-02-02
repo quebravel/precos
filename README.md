@@ -1,2 +1,2 @@
 # precos
-lista de preços
+lista de preço
