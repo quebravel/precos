@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Consulta de Preços</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      max-width: 600px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      cursor: pointer;
+    }
+    .resultado {
+      margin-top: 20px;
+      font-size: 18px;
+      border-top: 1px solid #ccc;
+      padding-top: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Consulta de Preços</h1>
+
+  <input
+    type="text"
+    id="codigo"
+    placeholder="Código do produto"
+    onkeydown="if (event.key === 'Enter') buscarProduto()"
+  >
+
+  <input
+    type="number"
+    id="desconto"
+    placeholder="Desconto (%)"
+    min="0"
+    max="30"
+    oninput="atualizarPreco()"
+  >
+
+  <button onclick="buscarProduto()">Pesquisar</button>
+
+  <div class="resultado" id="resultado"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
