@@ -51,7 +51,10 @@ function atualizarPreco() {
 
   const codigo = produtoAtual[0];
   const descricao = produtoAtual[1];
-  const estoque = Number(produtoAtual[2]);
+  // const estoque = Number(produtoAtual[2]);
+  const estoque = produtoAtual[2]
+  ? Number(produtoAtual[2].replace(".", "").replace(",", "."))
+  : 0;
   const precoBruto = Number(
   produtoAtual[3].replace(".", "").replace(",", ".")
 );
@@ -81,3 +84,4 @@ function atualizarPreco() {
     </strong>
   `;
 }
+
