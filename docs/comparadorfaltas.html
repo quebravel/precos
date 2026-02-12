@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Comparador de Compras</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<h2>Comparador de Arquivos de Compra</h2>
+
+<p>Arquivo de Compra (Original):</p>
+<input type="file" id="fileCompra" accept=".xlsx"><br><br>
+
+<p>Arquivo Recebido:</p>
+<input type="file" id="fileRecebido" accept=".xlsx"><br><br>
+
+<button onclick="compararArquivos()">Comparar</button>
+
+<script>
+async function lerArquivo(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            resolve(json);
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+async function compararArquivos() {
+    const fileCompra = document.getElementById("fileCompra").files[0];
+    const fileRecebido = document.getElementById("fileRecebido").files[0];
+
+    if (!fileCompra || !fileRecebido) {
+        alert("Selecione os dois arquivos.");
+        return;
+    }
+
+    const compra = await lerArquivo(fileCompra);
+    const recebido = await lerArquivo(fileRecebido);
+
+    const mapaRecebido = {};
+
+    // Criar mapa do arquivo recebido
+    recebido.forEach(linha => {
+        const codigo = linha[0];
+        const quantidade = Number(linha[1]) || 0;
+        if (codigo) {
+            mapaRecebido[codigo] = quantidade;
+        }
+    });
+
+    const faltantes = [];
+
+    // Comparar com arquivo de compra
+    compra.forEach(linha => {
+        const codigo = linha[0];
+        const quantidadeCompra = Number(linha[1]) || 0;
+
+        if (codigo) {
+            const quantidadeRecebida = mapaRecebido[codigo] || 0;
+            const diferenca = quantidadeCompra - quantidadeRecebida;
+
+            if (diferenca > 0) {
+                faltantes.push([codigo, diferenca]);
+            }
+        }
+    });
+
+    if (faltantes.length === 0) {
+        alert("Nenhum item faltante.");
+        return;
+    }
+
+    // Gerar novo XLSX
+    const novaPlanilha = XLSX.utils.aoa_to_sheet([["Código", "Quantidade Faltante"], ...faltantes]);
+    const novoWorkbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(novoWorkbook, novaPlanilha, "Faltantes");
+
+    XLSX.writeFile(novoWorkbook, "itens_faltantes.xlsx");
+}
+</script>
+
+</body>
+</html>
