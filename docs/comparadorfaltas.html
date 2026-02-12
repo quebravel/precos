@@ -4,6 +4,26 @@
     <meta charset="UTF-8">
     <title>Comparador de Compras</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      max-width: 600px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      cursor: pointer;
+    }
+    .resultado {
+      margin-top: 20px;
+      font-size: 18px;
+      border-top: 1px solid #ccc;
+      padding-top: 15px;
+    }
+  </style>
 </head>
 <body>
     <header>
@@ -12,12 +32,13 @@
             <a href="comparadorfaltas.html">Executar-faltas</a>
         </nav>
     </header>
-<h2>Comparador de Arquivos de Compra</h2>
+
+<h1>Comparador de Arquivos de Compra</h1>
 
 <p>Arquivo de Compra (Original):</p>
 <input type="file" id="fileCompra" accept=".xlsx"><br><br>
 
-<p>Arquivo Recebido:</p>
+<p>Arquivo de Compra Recebido (Fornecedor):</p>
 <input type="file" id="fileRecebido" accept=".xlsx"><br><br>
 
 <button onclick="compararArquivos()">Comparar</button>
@@ -93,4 +114,3 @@ async function compararArquivos() {
 
 </body>
 </html>
-
