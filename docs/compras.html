@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Inteligente de Estoque</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+    font-family: Arial;
+    background: linear-gradient(135deg,#0f172a,#1e293b);
+    color:white;
+    padding:30px;
+}
+.container{
+    background:#1e293b;
+    padding:25px;
+    border-radius:12px;
+}
+h1{text-align:center;margin-bottom:20px;}
+input,button{
+    padding:8px;
+    border-radius:6px;
+    border:none;
+    margin:5px;
+}
+button{
+    background:#2563eb;
+    color:white;
+    cursor:pointer;
+}
+button:hover{background:#1d4ed8;}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+    font-size:13px;
+}
+th,td{
+    text-align: center;
+    padding:6px;
+    border-bottom:1px solid #334155;
+}
+td:nth-child(2) {
+    text-align: left; /* descrição alinhada à esquerda */
+}
+th{background:#0f172a;}
+.falta{color:#ef4444;font-weight:bold;}
+.excesso{color:#facc15;font-weight:bold;}
+.ok{color:#22c55e;font-weight:bold;}
+.dashboard{
+    margin-top:20px;
+    display:flex;
+    gap:20px;
+}
+.card{
+    background:#0f172a;
+    padding:15px;
+    border-radius:8px;
+    flex:1;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>Dashboard Inteligente de Estoque</h1>
+
+<input type="file" id="fileInput" accept=".xlsx">
+<label>Estoque para durar:</label>
+<input type="number" id="meses" value="2" min="1">
+<button onclick="processar()">Analisar</button>
+<button onclick="exportarExcel()">Exportar Excel</button>
+<button onclick="filtrarFalta()">Mostrar Só Abaixo do Ideal</button>
+
+<div class="dashboard">
+    <div class="card" id="totais"></div>
+    <div class="card">
+        <canvas id="grafico"></canvas>
+    </div>
+</div>
+
+<div id="ranking" class="card"></div>
+<div id="resultado"></div>
+
+</div>
+
+<script>
+
+let dadosProcessados = [];
+
+function formatarReal(valor){
+    return valor.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+    });
+}
+
+function processar(){
+
+    const meses = Number(document.getElementById("meses").value);
+    const file = document.getElementById('fileInput').files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data,{type:'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet,{header:1});
+
+        let totalInvestido=0;
+        let totalCompra=0;
+        let abaixoIdeal=0;
+        let acimaIdeal=0;
+
+        dadosProcessados=[];
+
+        for(let i=1;i<json.length;i++){
+
+            const codigo = json[i][0];
+            if(!codigo) continue;
+
+            const descricao = json[i][1];
+            const estoque = Number(json[i][3])||0;
+            const vendido3 = Number(json[i][4])||0;
+            const custo = Number(json[i][6])||0;
+
+            const media = vendido3/3;
+            const estoqueIdeal = media*meses;
+            const giro = estoque>0 ? vendido3/estoque : 0;
+
+            let comprar=0;
+            let status="OK";
+
+            if(media===0){
+                status="Sem venda";
+            }
+            //else if(estoque < estoqueIdeal){
+
+            //    // 🔥 Nova regra: comprar a média arredondada
+            //    comprar = Math.round(media);
+
+            //    totalCompra += comprar * custo;
+            //    status="Abaixo";
+            //    abaixoIdeal++;
+           // }
+           else if(estoque < media){
+
+                // 🔥 Se estoque está abaixo da média mensal
+                // Comprar o estoque ideal completo
+                comprar = Math.round(estoqueIdeal);
+
+                totalCompra += comprar * custo;
+                status="CRÍTICO";
+                abaixoIdeal++;
+            }
+            else if(estoque < estoqueIdeal){
+
+                // Está abaixo do ideal mas não crítico
+                comprar = Math.round(media);
+
+                totalCompra += comprar * custo;
+                status="Abaixo";
+                abaixoIdeal++;
+            }
+            else if(estoque>estoqueIdeal){
+                status="Acima";
+                acimaIdeal++;
+            }
+
+            totalInvestido+=estoque*custo;
+
+dadosProcessados.push({
+    codigo: codigo,
+    descricao: descricao,
+    custo: custo,
+    estoque: estoque,
+    media: media,
+    estoqueIdeal: estoqueIdeal,
+    comprar: comprar,
+    status: status,
+    giro: giro
+});
+        }
+
+        mostrarTabela(dadosProcessados);
+        mostrarDashboard(totalInvestido,totalCompra,abaixoIdeal,acimaIdeal);
+        gerarGrafico(abaixoIdeal,acimaIdeal);
+        gerarRanking();
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+function mostrarTabela(lista){
+
+    let html = "<table>";
+    
+    // Cabeçalho
+    html += `
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th>Preço de Custo</th>
+            <th>Estoque</th>
+            <th>Média</th>
+            <th>Ideal</th>
+            <th>Comprar</th>
+            <th>Giro</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    `;
+
+    // Linhas
+    lista.forEach(p => {
+
+        html += `
+        <tr>
+            <td>${p.codigo || ""}</td>
+            <td>${p.descricao || ""}</td>
+            <td>${formatarReal(p.custo || 0)}</td>
+            <td>${p.estoque || 0}</td>
+            <td>${(p.media || 0).toFixed(1)}</td>
+            <td>${(p.estoqueIdeal || 0).toFixed(0)}</td>
+            <td>${p.comprar || 0}</td>
+            <td>${(p.giro || 0).toFixed(2)}</td>
+            <td>${p.status || ""}</td>
+        </tr>
+        `;
+    });
+
+    html += "</tbody></table>";
+
+    document.getElementById("resultado").innerHTML = html;
+}
+
+
+
+function mostrarDashboard(totalInvestido,totalCompra,abaixo,acima){
+    document.getElementById("totais").innerHTML=
+    `<div>Total Investido: ${formatarReal(totalInvestido)}</div>
+     <div>Total Compra Sugerida: ${formatarReal(totalCompra)}</div>
+     <div>Abaixo Ideal: ${abaixo}</div>
+     <div>Acima Ideal: ${acima}</div>`;
+}
+
+
+function gerarGrafico(abaixo,acima){
+    new Chart(document.getElementById("grafico"),{
+        type:"doughnut",
+        data:{
+            labels:["Abaixo Ideal","Acima Ideal"],
+            datasets:[{
+                data:[abaixo,acima],
+                backgroundColor:["#ef4444","#facc15"]
+            }]
+        }
+    });
+}
+
+function gerarRanking(){
+    let top = dadosProcessados
+        .sort((a,b)=>b.media-a.media)
+        .slice(0,10);
+
+    let html="<h3>Top 10 Mais Vendidos</h3><ol>";
+    top.forEach(p=>{
+        html+=`<li><strong>${p.codigo}</strong> - ${p.descricao} 
+        (Média ${p.media.toFixed(1)})</li>`;
+    });
+    html+="</ol>";
+
+    document.getElementById("ranking").innerHTML=html;
+}
+
+
+function filtrarFalta(){
+    let filtrado = dadosProcessados.filter(p => 
+        p.status !== "Acima" && p.status !== "OK" && p.status !== "Sem venda"
+    );
+    mostrarTabela(filtrado);
+}
+
+function exportarExcel(){
+    const ws=XLSX.utils.json_to_sheet(dadosProcessados);
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,"Analise");
+    XLSX.writeFile(wb,"analise_estoque.xlsx");
+}
+
+</script>
+
+</body>
+</html>
