@@ -108,7 +108,13 @@ async function compararArquivos() {
     const novoWorkbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(novoWorkbook, novaPlanilha, "Faltantes");
 
-    XLSX.writeFile(novoWorkbook, "itens_faltantes.xlsx");
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+    const dia = String(hoje.getDate()).padStart(2, "0");
+    const nomeArquivo = `nao-veio-${ano}-${mes}-${dia}.xlsx`;
+
+    XLSX.writeFile(novoWorkbook, nomeArquivo);
 }
 </script>
 
